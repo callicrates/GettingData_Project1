@@ -2,8 +2,8 @@
 #
 # Course Project: UCI HAR data set
 
-# The following information is also available in the codebook.  I
-# reproduce it here for convenience.
+# The following information is also available in the codebook and
+# README.md.  I reproduce it here for convenience.
 #
 # DATA DESCRIPTION:
 #
@@ -50,7 +50,7 @@
 # not themselves measurements since they are derived from the
 # accelerometer data rather than being sampled in their own right.  If
 # you agree with this, you can add the parameter
-# "include.feature.vectors=FALSE" to the runAnalysis() function.
+# "include.feature.vectors=FALSE" to the run_analysis() function.
 
 # NOTE:
 #
@@ -101,9 +101,9 @@ loadActivityNames <- function(path=".") {
 # Returns:
 #   Data frame with one character column named "features"
 
-loadFeatureNames <- function(path="UCI HAR DATASET") {
-    bare.frame <- read.table(os.path.join(path, "features.txt"), header=FALSE, delimiter=" ")
-    names(bare.frame) <- c("feature.name")
+loadFeatureNames <- function(path=".") {
+    bare.frame <- read.table(file.path(path, "features.txt"), header=FALSE, sep=" ")
+    names(bare.frame) <- c("id", "name")
     bare.frame
 }
 
@@ -195,13 +195,20 @@ loadMergedActivityIds <- function(path=".") {
 loadMergedFeatureVectors <- function(path=".") {
     featureNames <- loadFeatureNames(path=path)
 
-    feature.filename <- paste("X_", category, ".txt", sep="")
-    features <- read.fwf(file.path(path, category, feature.filename),
-                         header=FALSE,
-                         widths=rep(16, 561))
-    names(features) <- featureNames
+    test.filename <- c("X_test.txt")
+    train.filename <- c("X_train.txt")
 
-    features
+    test.data <- read.fwf(file.path(path, "test", test.filename),
+                          header=FALSE,
+                          widths=rep(16, 561))
+    train.data <- read.fwf(file.path(path, "train", train.filename),
+                           header=FALSE,
+                           widths=rep(16, 561))
+
+    total.data <- rbind(train.data, test.data)
+    names(total.data) <- featureNames$name
+
+    total.data
 }
 
 # Compute the mean and variance for each row in a 'trials' array.
@@ -275,6 +282,26 @@ loadSummarizedInertialSignals <- function(path=".") {
           body.gyro.x, body.gyro.y, body.gyro.z)
 }
 
+# Create mean and standard deviation columns for each column in the feature vector array.
+#
+# Args:
+#   frame (data.frame): Feature vector data
+#   subjects (factor): Vector of subject IDs
+#   activities (factor): Vector of activity labels
+#
+# Returns:
+#   New data fraome with '_mean' and '_sd' columns for each column in the feature vector
+
+summarizeFeatureVectors <- function(frame, subjects, activities) {
+    means <- aggregate(frame, by=list(subjects, activities), FUN=mean)
+    names(means) <- paste(names(means), "_mean", sep="")
+
+    sds <- aggregate(frame, by=list(subjects, activities), FUN=sd)
+    names(sds)<- paste(names(sds), "_sd", sep="")
+
+    cbind(means[3:ncol(means)], sds[3:ncol(sds)])
+}
+
 # ----------------------------------------------------------------------
 
 ## Okay, now we're ready to put everything together.  We can build
@@ -295,13 +322,20 @@ loadSummarizedInertialSignals <- function(path=".") {
 #  New data frame with inertial signals and (optionally) feature vectors
 
 assembleFullFrame <- function(path=".", include.feature.vectors=TRUE) {
-    inertial.data <- loadSummarizedInertialSignals(path)
+    inertial.summary <- loadSummarizedInertialSignals(path)
 
     if (include.feature.vectors) {
+        subject.frame <- loadMergedSubjectIds(path)
+        activity.frame <- loadMergedActivityIds(path)
+
+        print("Loading feature vectors")
         feature.vectors <- loadMergedFeatureVectors(path)
-        result <- cbind(feature.vectors, inertial.data)
+
+        print("Summarizing feature vectors")
+        feature.summary <- summarizeFeatureVectors(feature.vectors, subject.frame$subject, activity.frame$activity)
+        result <- cbind(inertial.summary, feature.summary)
     } else {
-        result <- inertial.data
+        result <- inertial.summary
     }
     result
 }
