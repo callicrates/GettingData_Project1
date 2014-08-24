@@ -2,10 +2,10 @@
 #
 # Course Project: UCI HAR data set
 
-# The following information is also available in the codebook and
-# README.md.  I reproduce it here for convenience.
+# Much of the following information is also available in the codebook
+# and README.md.  I reproduce it here for convenience.
 #
-# DATA DESCRIPTION:
+##### DATA DESCRIPTION:
 #
 # The data set has two sets of components.
 #
@@ -28,7 +28,7 @@
 # "activity" is a factor describing the activity the subject was
 # performing.
 #
-# WHAT I DID:
+##### WHAT I DID:
 #
 # Our assignment requires us to compute the mean and standard
 # deviation of each measurement.  There are two ways I could interpret
@@ -51,6 +51,47 @@
 # accelerometer data rather than being sampled in their own right.  If
 # you agree with this, you can add the parameter
 # "include.feature.vectors=FALSE" to the run_analysis() function.
+#
+##### HOW THE SCRIPT WORKS:
+#
+# We treat the accelerometer data and the feature vectors separately.
+#
+# Accelerometer Data:
+#
+# We load each component of each array -- (X, Y, Z) x (Total
+# Acceleration, Body Acceleration, Body Gyro) -- and compute mean and
+# variance for each row of each component.  See above for why I do it
+# this way instead of computing statistics separately for each
+# component.  Then we combine the data frames for all 9 sets of
+# measurements left-to-right.  We take advantage of the fact that all
+# the data files have the same number of lines in the same order and
+# use cbind() instead of merge().
+#
+# Look at loadMergedSignalArray(), summarizeAcrossTimeSeries() and
+# loadSummarizedInertialSignals() to see how this works.
+#
+# Feature vectors:
+#
+# We load the table of feature vectors with loadMergedFeatureVectors()
+# and assign column names from 'features_info.txt' that we loaded with
+# loadFeatureNames().  We compute summary statistics for each column
+# separately and then aggregate within each subject/activity pair in
+# summarizeFeatureVectors().
+#
+# Final assembly:
+#
+# We take all the components of the data and assemble them in assembleFullFrame.
+
+                                        # Aggregation:
+#
+# We aggregate trials for each different subject and activity in 
+
+# Since each element of a feature vector is its own quantity
+
+# We take advantage of the fact that all of the data files in a
+# section (training or testing) have the same number of lines and
+# correspond to the same trials.
+
 
 # NOTE:
 #
@@ -277,9 +318,9 @@ loadSummarizedInertialSignals <- function(path=".") {
         loadMergedSignalArray("body_gyro_z", path=path), prefix="body_gyro_z")
 
     print("Creating summary data frame for inertial data")
-    cbind(total.acc.x, total.acc.y, total.acc.z,
-          body.acc.x, body.acc.y, body.acc.z,
-          body.gyro.x, body.gyro.y, body.gyro.z)
+    inertial.frame <- cbind(total.acc.x, total.acc.y, total.acc.z,
+                            body.acc.x, body.acc.y, body.acc.z,
+                            body.gyro.x, body.gyro.y, body.gyro.z)
 }
 
 # Create mean and standard deviation columns for each column in the feature vector array.
@@ -321,13 +362,19 @@ summarizeFeatureVectors <- function(frame, subjects, activities) {
 # Returns:
 #  New data frame with inertial signals and (optionally) feature vectors
 
-assembleFullFrame <- function(path=".", include.feature.vectors=TRUE) {
-    inertial.summary <- loadSummarizedInertialSignals(path)
+assembleFullFrame <- function(path=".", include.feature.vectors=FALSE) {
+    subject.frame <- loadMergedSubjectIds(path)
+    activity.frame <- loadMergedActivityIds(path)
+
+    # When we get the inertial data back from
+    # loadSummarizedInertialSignals it has been summarized within each
+    # trial but not across trials.  Handle that aggregation here.
+    inertial.data <- loadSummarizedInertialSignals(path)
+    inertial.summary <- aggregate(inertial.data, by=list(subject.frame$subject, activity.frame$activity), FUN=sum)
+    names(inertial.summary)[1] <- c("subject")
+    names(inertial.summary)[2] <- c("activity")
 
     if (include.feature.vectors) {
-        subject.frame <- loadMergedSubjectIds(path)
-        activity.frame <- loadMergedActivityIds(path)
-
         print("Loading feature vectors")
         feature.vectors <- loadMergedFeatureVectors(path)
 
@@ -357,14 +404,6 @@ assembleFullFrame <- function(path=".", include.feature.vectors=TRUE) {
 convertVarToSD <- function(frame) {
     variance.columns <- grep("_var$", names(frame))
 
-    replaceColumn <- function(col.index) {
-        sqrt(frame[, col.index])
-        frame2[, col.index] <- sqrt(frame2[, col.index])
-        col.index
-    }
-
-#            names(frame2)[col.index] <- sub("_var$", "_sd", names(frame2)[col.index])
-
     temp <- lapply(variance.columns, function(i) sqrt(frame[, i]))
     frame[, variance.columns] <- temp
     names(frame)[variance.columns] <- sub("_var$", "_sd", names(frame)[variance.columns])
@@ -392,17 +431,7 @@ convertVarToSD <- function(frame) {
 run_analysis <- function(path=".", include.feature.vectors=FALSE) {
     full.table <- assembleFullFrame(path, include.feature.vectors)
 
-    subjects <- loadMergedSubjectIds(path)
-    activities <- loadMergedActivityIds(path)
-
-    agg.table <- aggregate(full.table,
-                           by=list(subjects$subject, activities$activity),
-                           FUN=sum)
-
-    names(agg.table)[1] <- "subject"
-    names(agg.table)[2] <- "activity"
-
-    convertVarToSD(agg.table)
+    convertVarToSD(full.table)
 }
 
 ### This function is just for the Coursera assignment
