@@ -24,7 +24,9 @@ for overall acceleration, acceleration due to body motion and angular
 velocity.
 
 Details on the filtering approach are available at the data set's home
-page listed under _Original Source_.
+page listed under _Original Source_.  The data set's original codebook
+is available in this repository in the file
+`original_data/README.txt`.
 
 In addition to the filtered accelerometer data, each trial includes a
 561-component feature vector containing derived quantities.
@@ -45,6 +47,25 @@ columns.  These columns are labeled with the feature names found in
 
 ### How to Access Data
 
-The script 'run_analysis.R' contains several functions that will let
-you get access to various components of the data:
+The script `run_analysis.R` contains several functions that will give
+you access to various components of the data.  Start with the function
+`run_analysis()` and work backwards from there.
 
+### Variables
+
+The `run_analysis` script creates a data frame with either 20 or XXXX
+columns depending on whether you specified
+`include.feature.vectors=TRUE` when you called `run_analysis`.
+
+* The `subject` column is a unique numeric ID for the person who wore the accelerometer for each individual trial.
+* The `activity` column is a string describing the activity the subject was directed to perform.  It has been created by replacing the numeric values in `y_{test,train}.txt` with the names in `activity_labels.txt`.
+* Mean and standard deviations (denoted `foo_mean` and `foo_sd`) for each of the following quantities:
+** `total_acc` (x, y and z components):  Average of total acceleration value (by component) within a trial for each subject and activity.  Units are standard gravities (1 g = 9.8 meters / sec^2).
+** `body_acc` (x, y and z components): Average of body acceleration (total acceleration minus gravity) within a trial for each subject and activity.  Units are standard gravities.
+** `body_gyro` (x, y and z) components: Average of angular velocity within a trial for each subject and activity.
+
+Further information on how the measurements were obtained and filtered
+is available in the file `original_data/README.txt`.  This file
+contains the codebook for the original data set.
+
+If you have requested feature vectors in your analysis, each element of the feature vector will have its own column for mean and standard deviation.
