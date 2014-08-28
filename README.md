@@ -4,6 +4,18 @@ Getting and Cleaning Data Course Project
 This is my submission for the course project for Getting and Cleaning
 Data.
 
+## READ THIS FIRST
+
+Late-breaking update!  As I've begun to evaluate other students'
+submissions I've recognized that I may have misunderstood the
+instructions.  I believed that I was to *create* columns with means
+and standard deviations instead of just using those that were already
+there.  If you find yourself confused, it's almost certainly me, not
+you.
+
+(I promise that I have not changed anything at all about my submission
+since the deadline except to add the paragraph above.)
+
 ## Contents
 
 Here are the files you need to be aware of:
